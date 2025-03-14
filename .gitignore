@@ -1,0 +1,13 @@
+# Ignore configuration files that may contain sensitive information.
+*.json
+
+tmp/*
+*.dsk
+*.idx
+*.ppx*
+*.ppw
+*.ppj
+/.vs
+*.$wrk
+*~
+.DS_Store
