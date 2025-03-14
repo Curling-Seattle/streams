@@ -69,11 +69,16 @@ using the first calendar event's description. Videos within the
 playlist will be created with the date, time, and sheet, e.g.  "Draw 1
 (9:00) - Sheet 1 - Spielname"
 
-The bonspiel script uses a file called GCC_Bonspiel.png to set the
-video thumbnail. The same file is used for every bonspiel. To customize
-it for a particular bonspiel, this file needs to get updated at least 1 day
-before the bonspiel starts.  The file lives in the same directory as the
-scripts.
+For bonspiel events, the script uses a file called GCC_Bonspiel.png to
+set the video thumbnail. The same file is used for every bonspiel. To
+customize it for a particular bonspiel, this file needs to get updated
+at least 1 day before the bonspiel starts.  The file lives in the same
+directory as the scripts.
+
+The script makes use of stored credentials to access the YouTube and
+Google API's. The credentials and identifiers are kept in .json files
+and they are not stored in the repository. Ask an operator if you need
+a copy.
 
 ## `streaming_start_stop_script.py`
 
@@ -87,3 +92,6 @@ checks to see if any pending streams are past their start time, if so,
 start them.
 
 This script does open a console window that must remain open for the duration.
+
+The script makes use of stored credentials to access the YouTube and
+Google API's. These are the same files used by `daily_stream_scheduler.py`.
