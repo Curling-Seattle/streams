@@ -4,6 +4,11 @@
 $dbg = $false
 $initialDelay = 30
 $pollEvery = 60
+
+# The local config file is used to define the webhook URL needed to
+# send messages to the GCC Slack web-cast channel. If the file is
+# missing, messages are only written to the console where this script
+# runs. The local config can also change the default values set above
 $localConfig = "$PSScriptRoot\start-streams-config.ps1"
 if (-not (Test-Path $localConfig)) {
     Write-Host "No $localConfig file found"
