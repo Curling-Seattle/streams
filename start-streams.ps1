@@ -4,6 +4,7 @@
 $dbg = $false
 $initialDelay = 30
 $pollEvery = 60
+$sheets = 1, 2, 3 # Sheets for which to create streams (Use 4, 5 on stream2)
 
 # The local config file is used to define the webhook URL needed to
 # send messages to the GCC Slack web-cast channel. If the file is
@@ -19,6 +20,21 @@ if (-not (Test-Path $localConfig)) {
 
 Write-Host "Starting OBS process initialization script ..."
 
+function Notify-GCC {
+    param ([string] $mesg)
+    $msg = "On $([System.Environment]::MachineName) at $(Get-Date):`n$mesg"
+    if ($dbg -or $webhookURL -eq "") {
+	$payload = @{text = "***Debug*** $msg"} | ConvertTo-Json
+	Write-Host Invoke-RestMethod -Uri `$webhookURL -Method Post `
+	  -Body $payload -ContentType "application/json"
+    } else {
+	Write-Host "Sending '$msg' to web-cast channel"
+	$payload = @{text = $msg} | ConvertTo-Json
+	Invoke-RestMethod -Uri $webhookURL -Method Post `
+	  -Body $payload -ContentType "application/json"
+    }
+}
+
 # First, verify that YouTube is reachable over the network
 while (-not (Test-Connection -ComputerName youtube.com -Count 1)) {
     Write-Host "No network connection to youtube. Waiting..."
@@ -32,25 +48,7 @@ if ($initialDelay -gt 0) {
     Start-Sleep -Seconds $initialDelay
 }
 
-function Notify-GCC {
-    param ([string] $mesg)
-    $msg = "On $(Get-Date):`n$mesg"
-    if ($dbg -or $webhookURL -eq "") {
-	$payload = @{text = "***Debug*** $msg"} | ConvertTo-Json
-	Write-Host Invoke-RestMethod -Uri `$webhookURL -Method Post `
-	  -Body $payload -ContentType "application/json"
-    } else {
-	Write-Host "Sending '$msg' to web-cast channel"
-	$payload = @{text = $msg} | ConvertTo-Json
-	Invoke-RestMethod -Uri $webhookURL -Method Post `
-	  -Body $payload -ContentType "application/json"
-    }
-}
-
-# On each stream server, select which sheets to monitor
-$sheets = 4, 5
-
-# Associative array to may process IDs to sheet numbers
+# Associative array to map process IDs to sheet numbers
 $sheet_from_pid = @{}
 
 # Build a list of OBS processes that create the composite view for the streams
@@ -96,10 +94,12 @@ if ($proc_list.Count -gt 0) {
 		Write-Host "Process ID $($proc.Id) died and sheet_from_pid = $($sheet_from_pid[$proc.Id])"
 	    }
 	}
-	if ($dbg) {
-	    Write-Host "Start-Sleep -Seconds $pollEvery"
+	if ($alive) {
+	    if ($dbg) {
+		Write-Host "Start-Sleep -Seconds $pollEvery"
+	    }
+	    Start-Sleep -Seconds $pollEvery
 	}
-	Start-Sleep -Seconds $pollEvery
     } while ($alive)
 
     Notify-GCC("All OBS processes for sheets " + ($sheets -join ', ') +
