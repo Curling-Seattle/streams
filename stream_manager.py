@@ -841,7 +841,7 @@ def run_cycle(youtube, calendar_service, state, known_event_ids, known_broadcast
 def main():
     logger.info("This is the calendar-driven stream manager for the youtube streams.")
     logger.info("   *****   Please DO NOT CLOSE THIS WINDOW   *****")
-##fff    time.sleep(60)  # give OBS instances time to start up
+    time.sleep(60)  # give OBS instances time to start up
 
     creds = get_credentials()
     youtube = build("youtube", "v3", credentials=creds)
