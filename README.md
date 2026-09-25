@@ -48,6 +48,7 @@ A background script that keeps YouTube live broadcasts in sync with a Google Cal
    | `default_thumbnail_file` | *(optional)* Filename (inside `shared_images_dir`) used when no `thumbnail:` directive is set — defaults to `GCC_Default.png` |
    | `timezone` | *(optional)* IANA timezone name for the daily tracking-window cutoff — defaults to `US/Pacific` |
    | `cutoff_hour` / `cutoff_minute` | *(optional)* Local time each day where the tracking window rolls over to the next day — defaults to `4:59` |
+   | `quit_hour` / `quit_minute` | *(optional)* Local time each day when the script exits on its own (e.g. before a scheduled reboot) — omit both to run indefinitely. Live streams are left running and picked up by the next run |
    | `poll_interval_seconds` | *(optional)* How often to check the calendar — defaults to `60` |
    | `log_max_bytes` | *(optional)* Log file size that triggers rotation — defaults to `5000000` (~5 MB) |
    | `log_backup_count` | *(optional)* Number of rotated log files to keep — defaults to `5` |

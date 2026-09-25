@@ -182,6 +182,17 @@ if not (0 <= CUTOFF_HOUR <= 23):
 if not (0 <= CUTOFF_MINUTE <= 59):
     raise SystemExit(f"{CONFIG_FILE}: 'cutoff_minute' must be 0-59, got {CUTOFF_MINUTE}")
 
+# optional daily time the script exits on its own - omit both to run indefinitely
+QUIT_HOUR = _config.get("quit_hour")
+QUIT_MINUTE = _config.get("quit_minute")
+if (QUIT_HOUR is None) != (QUIT_MINUTE is None):
+    raise SystemExit(f"{CONFIG_FILE}: 'quit_hour' and 'quit_minute' must be set together (or both omitted)")
+if QUIT_HOUR is not None:
+    if not (0 <= QUIT_HOUR <= 23):
+        raise SystemExit(f"{CONFIG_FILE}: 'quit_hour' must be 0-23, got {QUIT_HOUR}")
+    if not (0 <= QUIT_MINUTE <= 59):
+        raise SystemExit(f"{CONFIG_FILE}: 'quit_minute' must be 0-59, got {QUIT_MINUTE}")
+
 POLL_INTERVAL_SECONDS = _config.get("poll_interval_seconds", 60)
 
 LOG_MAX_BYTES = _config.get("log_max_bytes", 5_000_000)
@@ -469,8 +480,10 @@ def create_playlist(youtube, playlist_title, description, visibility):
         "snippet": {"title": playlist_title, "description": description},
         "status": {"privacyStatus": visibility},
     }
-    logger.info(f"Creating playlist: {playlist_title} (visibility={visibility})")
-    return execute_with_retries(youtube.playlists().insert(part="snippet,status", body=body))
+    logger.info(f"No existing playlist named '{playlist_title}' - creating it (visibility={visibility})")
+    playlist = execute_with_retries(youtube.playlists().insert(part="snippet,status", body=body))
+    logger.info(f"Created playlist '{playlist_title}' (playlist id={playlist['id']})")
+    return playlist
 
 
 def get_or_create_playlist(youtube, playlist_title, description, visibility):
@@ -479,6 +492,8 @@ def get_or_create_playlist(youtube, playlist_title, description, visibility):
     playlist = get_playlist(youtube, playlist_title)
     if playlist is None:
         playlist = create_playlist(youtube, playlist_title, description, visibility)
+    else:
+        logger.info(f"Found existing playlist '{playlist_title}' (playlist id={playlist['id']})")
     return playlist
 
 
@@ -530,7 +545,7 @@ def create_broadcast(youtube, playlist, stream_key, title, description, start_dt
         }
     }
 
-    logger.debug("scheduling broadcast for: " + title)
+    logger.info(f"Creating YouTube stream: '{title}' [{start_dt.isoformat()} -> {end_dt.isoformat()}]")
     response = execute_with_retries(
         youtube.liveBroadcasts().insert(part="snippet,status,contentDetails", body=live_broadcast)
     )
@@ -674,6 +689,17 @@ def get_window_end(pacific_now):
     return end
 
 
+def get_quit_time(pacific_now):
+    """The next QUIT_HOUR:QUIT_MINUTE strictly after pacific_now (so starting up during or just
+    after the quit minute doesn't exit right away), or None if no quit time is configured."""
+    if QUIT_HOUR is None:
+        return None
+    quit_at = pacific_now.replace(hour=QUIT_HOUR, minute=QUIT_MINUTE, second=0, microsecond=0)
+    if quit_at <= pacific_now:
+        quit_at += timedelta(days=1)
+    return quit_at
+
+
 def run_cycle(youtube, calendar_service, state, known_event_ids, known_broadcasts):
     now = datetime.now(timezone.utc)
     pacific_now = now.astimezone(PACIFIC)
@@ -699,6 +725,8 @@ def run_cycle(youtube, calendar_service, state, known_event_ids, known_broadcast
                 
         event_id = event["id"]
         current_event_ids.add(event_id)
+        # first time this run has seen this event (e.g. at startup) - used to log once, not every minute
+        first_seen = event_id not in known_event_ids
         start_dt = datetime.fromisoformat(event["start"]["dateTime"])
         end_dt = datetime.fromisoformat(event["end"]["dateTime"])
         directives, description = parse_description_directives(event.get("description", " "))
@@ -746,12 +774,24 @@ def run_cycle(youtube, calendar_service, state, known_event_ids, known_broadcast
             if broadcast is None and entry is not None:
                 # not active/upcoming anymore: already completed, or removed out from under us.
                 # Leave it alone rather than guessing.
+                if first_seen:
+                    logger.info(f"Saved stream for event '{event.get('summary')}' sheet {sheet_number} "
+                                f"(broadcast id={entry['broadcast_id']}) is no longer active/upcoming on "
+                                f"YouTube - leaving it alone")
                 continue
+
+            if broadcast is not None and first_seen:
+                logger.info(f"Found existing YouTube stream for event '{event.get('summary')}' "
+                            f"sheet {sheet_number}: '{broadcast['snippet']['title']}' "
+                            f"(broadcast id={broadcast['id']}) - using it")
 
             if broadcast is None:
                 # no state entry yet - see if a matching broadcast already exists on YouTube
                 # (e.g. state file was lost, or this is the first run against pre-existing streams)
                 broadcast = find_unclaimed_broadcast_by_title(known_broadcasts, claimed_broadcast_ids, title)
+                if broadcast is not None:
+                    logger.info(f"Found existing YouTube stream for event '{event.get('summary')}' "
+                                f"sheet {sheet_number}: '{title}' (broadcast id={broadcast['id']}) - using it")
 
             if broadcast is None:
                 if missing_directives:
@@ -763,8 +803,9 @@ def run_cycle(youtube, calendar_service, state, known_event_ids, known_broadcast
                     youtube, playlist, stream_key, title, description, start_dt, end_dt,
                     thumbnail_override, stream_visibility
                 )
-                logger.info(f"Created broadcast for event '{event.get('summary')}' sheet {sheet_number}: "
-                            f"'{title}' (broadcast id={broadcast_id}, visibility={stream_visibility})")
+                logger.info(f"Created YouTube stream for event '{event.get('summary')}' sheet {sheet_number}: "
+                            f"'{title}' (broadcast id={broadcast_id}, visibility={stream_visibility}, "
+                            f"playlist='{playlist_title}')")
                 state[state_key] = {"broadcast_id": broadcast_id}
                 claimed_broadcast_ids.add(broadcast_id)
                 # record what we just created locally - never re-read it back from youtube
@@ -841,7 +882,7 @@ def run_cycle(youtube, calendar_service, state, known_event_ids, known_broadcast
 def main():
     logger.info("This is the calendar-driven stream manager for the youtube streams.")
     logger.info("   *****   Please DO NOT CLOSE THIS WINDOW   *****")
-    time.sleep(60)  # give OBS instances time to start up
+##fff    time.sleep(60)  # give OBS instances time to start up
 
     creds = get_credentials()
     youtube = build("youtube", "v3", credentials=creds)
@@ -856,6 +897,11 @@ def main():
     # create/update a broadcast, or to start/stop one, all driven off the calendar and our own
     # in-memory record of what we last set
     known_broadcasts = fetch_youtube_broadcasts(youtube)
+    logger.info(f"Startup: found {len(known_broadcasts)} active/upcoming stream(s) on YouTube")
+
+    quit_at = get_quit_time(startup_now)
+    if quit_at is not None:
+        logger.info(f"Scheduled quit: script will exit at {quit_at.strftime('%Y-%m-%d %H:%M %Z')}")
 
     first_cycle = True
     while True:
@@ -870,6 +916,12 @@ def main():
             logger.error("Unexpected error during cycle", exc_info=True)
 
         save_state(state)
+
+        if quit_at is not None and datetime.now(timezone.utc) >= quit_at:
+            logger.info(f"Configured script end time ({QUIT_HOUR:02d}:{QUIT_MINUTE:02d}) reached - "
+                        f"exiting as scheduled. Live streams are left running.")
+            return
+
         sleep_until_next_minute()
 
 
