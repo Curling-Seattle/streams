@@ -1,0 +1,23 @@
+{
+  "calendar_id": "your-calendar-id@gmail.com",
+  "channel_id": "YOUR_YOUTUBE_CHANNEL_ID",
+  "stream_keys": [
+    "stream-key-for-sheet-1",
+    "stream-key-for-sheet-2",
+    "stream-key-for-sheet-3",
+    "stream-key-for-sheet-4",
+    "stream-key-for-sheet-5"
+  ],
+  "secret_file": "C:\\path\\to\\youtube_session.json",
+  "token_file": "C:\\path\\to\\streaming_token.json",
+  "state_file": "C:\\path\\to\\stream_state.json",
+  "log_file": "C:\\path\\to\\stream_manager.log",
+  "shared_images_dir": "C:\\path\\to\\shared-images\\",
+  "default_thumbnail_file": "GCC_Default.png",
+  "timezone": "US/Pacific",
+  "cutoff_hour": 4,
+  "cutoff_minute": 59,
+  "poll_interval_seconds": 60,
+  "log_max_bytes": 5000000,
+  "log_backup_count": 5
+}
