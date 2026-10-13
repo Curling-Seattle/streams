@@ -1,6 +1,6 @@
 # GCC YouTube Stream Manager
 
-A background script that keeps YouTube live broadcasts in sync with a Google Calendar. Volunteers schedule games/draws on a shared calendar as usual; the script polls that calendar once a minute and creates, updates, starts, and stops the corresponding YouTube broadcasts to match — no manual work in YouTube Studio.
+A background script that keeps YouTube live broadcasts in sync with a Google Calendar. Volunteers schedule games/draws on a shared calendar; the script polls that calendar once a minute and creates, updates, starts, and stops the corresponding YouTube broadcasts to match — no manual work in YouTube Studio.
 
 ## How it works
 
