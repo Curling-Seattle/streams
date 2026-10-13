@@ -325,7 +325,7 @@ def validate_visibility(value):
     normalized = value.strip().lower()
     if normalized in VALID_VISIBILITIES:
         return normalized
-    logger.warning(f"ignoring invalid visibility '{value}' (expected public, unlisted, or private)")
+    logger.warning(f"ignoring invalid visibility '{value}' (expected one of {VALID_VISIBILITIES})")
     return None
 
 
