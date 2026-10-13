@@ -333,7 +333,7 @@ def parse_sheet_list(value):
     sheets = set()
     for token in value.split(","):
         token = token.strip()
-        if token.isdigit():
+        if token.isdigit() and 1 <= int(token) and int(token) <= len(stream_keys):
             sheets.add(int(token))
         elif token:
             logger.warning(f"ignoring invalid sheet number '{token}' in sheets directive")
