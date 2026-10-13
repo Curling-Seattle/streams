@@ -90,6 +90,10 @@ sheet 2 title: [title] (Skip Cam)
 Live coverage of tonight's league draw.
 ```
 
+Note: You can only schedule 1 calendar event per time period, currently. IF two events are scheduled at the same time, whichever stream youtube attempts to start second will fail, potentially leading to other streams not starting in the same time block.
+
+Sequential events with Event 1 end time == Event 2 start time will behave correctly. 
+
 ## Files
 
 | File | Purpose |
